@@ -189,6 +189,22 @@ Unified Error Response Model
 FluentValidation Integration
 
 Logging Layer
+---
+
+## 🛡️ Security Implementation
+To ensure the confidentiality of healthcare data, the following security measures are implemented:
+* **AES-256 Encryption:** Sensitive database fields  are encrypted at rest.
+* **Rate Limiting:** Protects authentication endpoints from brute-force and DoS attacks.
+* **Credential Hardening:** Sensitive keys are managed via local configurations (excluded from source control) to prevent leaks.
+
+## 🚀 Environment Setup
+To run this project locally, follow these steps:
+1. **Clone** the repository to your machine.
+2. Locate `appsettings.Example.json` in the `EHRS.Api` project.
+3. **Copy and rename** it to `appsettings.json`.
+4. Update the `ConnectionStrings` with your local SQL Server details.
+5. Provide your own `Encryption:Key` for AES operations.
+6. Run `dotnet ef database update` to initialize the database schema.
 
 Unit & Integration Testing
 
