@@ -5,6 +5,7 @@ using EHRS.Core.Common;
 using EHRS.Core.DTOs.Auth;
 using EHRS.Core.Requests.PatientAuth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EHRS.Api.Controllers;
 
@@ -57,6 +58,7 @@ public sealed class PatientAuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")] // 👈 Rate Limiting هنا
     public async Task<IActionResult> Login([FromBody] PatientLoginRequest request)
     {
         var (success, error, user) = await _queries.LoginAsync(request);

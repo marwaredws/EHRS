@@ -37,13 +37,15 @@ namespace EHRS.Infrastructure.Queries
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 var s = query.Search.Trim();
-                q = q.Where(r =>
-                    r.Patient.FullName.Contains(s) ||
-                    (r.Diagnosis != null && r.Diagnosis.Contains(s)) ||
-                    (r.Treatment != null && r.Treatment.Contains(s))
-                );
-            }
 
+                // الحل الآمن: البحث في اسم المريض فقط لأنه نص واضح (Plain Text)
+                q = q.Where(r => r.Patient.FullName.Contains(s));
+
+                /* توضيح للتيم: تم إزالة البحث من Diagnosis و Treatment 
+                   لأنها أعمدة مشفرة بـ AES، والـ SQL لا يدعم الـ Wildcard Search 
+                   (LIKE) على البيانات المشفرة.
+                */
+            }
             var totalCount = await q.CountAsync(ct);
 
             var items = await q

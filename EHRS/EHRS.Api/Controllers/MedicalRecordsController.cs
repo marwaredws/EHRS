@@ -89,8 +89,8 @@ namespace EHRS.Api.Controllers
             [FromForm] CreateMedicalRecordForm form,
             CancellationToken ct)
         {
-            var doctorId = ClaimsHelper.GetDoctorId(User);
-
+             var doctorId = ClaimsHelper.GetDoctorId(User);
+            
             try
             {
                 // 1) Create Medical Record

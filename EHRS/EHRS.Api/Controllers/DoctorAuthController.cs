@@ -5,6 +5,7 @@ using EHRS.Core.Common;
 using EHRS.Core.DTOs.Auth;
 using EHRS.Core.Requests.DoctorAuth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting; // 👈 مهم
 
 namespace EHRS.Api.Controllers;
 
@@ -31,11 +32,11 @@ public sealed class DoctorAuthController : ControllerBase
         if (!success)
             return BadRequest(new { message = MapRegisterError(error) });
 
-        // Register
         return Ok(new { message = _loc["Auth_RegisterSuccess"] });
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")] // 👈 إضافة الريت ليميت هنا
     public async Task<IActionResult> Login([FromBody] DoctorLoginRequest request)
     {
         var (success, error, user) = await _queries.LoginAsync(request);

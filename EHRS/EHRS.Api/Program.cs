@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using System.Threading.RateLimiting; // 👈 أضيفي ده
 using EHRS.Api.Localization;
 using EHRS.Api.Services;
 using EHRS.Core.Abstractions.Queries;
@@ -10,6 +11,7 @@ using EHRS.Infrastructure.Queries.Patients;
 using EHRS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.RateLimiting; // 👈 أضيفي ده
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -84,6 +86,7 @@ namespace EHRS.Api
 
             builder.Services.AddDbContext<EHRSContext>(options =>
                 options.UseSqlServer(connStr));
+            builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
             // JWT Token Service (Api)
             builder.Services.AddSingleton<JwtTokenService>();
@@ -110,6 +113,66 @@ namespace EHRS.Api
                 });
 
             builder.Services.AddAuthorization();
+
+            // ⭐⭐⭐ Rate Limiting Configuration ⭐⭐⭐
+            builder.Services.AddRateLimiter(options =>
+            {
+                // سياسة خاصة بـ Login (5 محاولات في الدقيقة)
+                options.AddPolicy("LoginPolicy", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,           // 5 محاولات بس
+                            Window = TimeSpan.FromMinutes(1), // في الدقيقة
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        }));
+
+                // سياسة خاصة بـ Medical Records (20 طلب في الدقيقة)
+                options.AddPolicy("MedicalPolicy", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 20,          // 20 طلب
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 2
+                        }));
+
+                // سياسة عامة لكل الـ APIs (100 طلب في الدقيقة)
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
+                    httpContext =>
+                    {
+                        var userIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                        return RateLimitPartition.GetFixedWindowLimiter(
+                            partitionKey: userIp,
+                            factory: _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 100,
+                                Window = TimeSpan.FromMinutes(1),
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 5
+                            });
+                    });
+
+                // رد لما يتجاوز الحد
+                options.OnRejected = async (context, token) =>
+                {
+                    context.HttpContext.Response.StatusCode = 429; // Too Many Requests
+                    context.HttpContext.Response.ContentType = "application/json";
+
+                    var response = new
+                    {
+                        error = "Too many requests",
+                        message = "You have exceeded the rate limit. Please try again later.",
+                        retryAfter =  60
+                    };
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(response, token);
+                };
+            });
 
             // Helper: App Localizer
             builder.Services.AddScoped<IAppLocalizer, AppLocalizer>();
@@ -149,7 +212,7 @@ namespace EHRS.Api
             builder.Services.AddScoped<IPatientAuthQueries, PatientAuthQueries>();
             builder.Services.AddScoped<IDoctorAuthQueries, DoctorAuthQueries>();
 
-            // ** Doctor Surgeries Queries (NEW) **
+            // Doctor Surgeries Queries
             builder.Services.AddScoped<IDoctorSurgeryQueries, DoctorSurgeryQueries>();
 
             var app = builder.Build();
@@ -169,6 +232,9 @@ namespace EHRS.Api
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            // ⭐ استخدام Rate Limiting ⭐
+            app.UseRateLimiter();
 
             app.MapControllers();
             app.Run();

@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using EHRS.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion; // 👈 أضيفي ده
+using EHRS.Core.Interfaces; // 👈 أضيفي ده
 
 namespace EHRS.Infrastructure.Persistence;
 
 public partial class EHRSContext : DbContext
 {
+    private readonly IEncryptionService? _encryptionService; // 👈 أضيفي ده (nullable)
+
     public EHRSContext()
     {
     }
@@ -16,26 +20,70 @@ public partial class EHRSContext : DbContext
     {
     }
 
+    // 👇 كونستركتور جديد عشان التشفير
+    public EHRSContext(DbContextOptions<EHRSContext> options, IEncryptionService encryptionService)
+        : base(options)
+    {
+        _encryptionService = encryptionService;
+    }
+
     public virtual DbSet<Appointment> Appointments { get; set; }
-
     public virtual DbSet<Doctor> Doctors { get; set; }
-
     public virtual DbSet<MedicalRecord> MedicalRecords { get; set; }
-
     public virtual DbSet<Patient> Patients { get; set; }
-
     public virtual DbSet<SensorDatum> SensorData { get; set; }
-
     public virtual DbSet<SurgeryHistory> SurgeryHistories { get; set; }
-
     public virtual DbSet<UserCredential> UserCredentials { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=.;Database=EHR_Wearable_DB;Trusted_Connection=True;TrustServerCertificate=True");
+        => optionsBuilder.UseSqlServer("Server=.;Database=EHR_Wearable_DB;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // 👇 لو في خدمة تشفير (يعني في وضع التشغيل العادي)
+        if (_encryptionService != null)
+        {
+            var converter = new ValueConverter<string, string>(
+                v => _encryptionService.Encrypt(v ?? string.Empty),
+                v => _encryptionService.Decrypt(v ?? string.Empty)
+            );
+
+            // ------------------- إعدادات التشفير -------------------
+            // 🔐 تشفير بيانات الأطباء
+            modelBuilder.Entity<Doctor>(entity =>
+            {
+                // الحقول الحساسة
+               // entity.Property(e => e.FullName).HasConversion(converter);
+               // entity.Property(e => e.Email).HasConversion(converter);
+              //  entity.Property(e => e.ContactNumber).HasConversion(converter);
+                // الباقي زي ما هو (About, Area, Certificates, ...)
+            });
+
+            // 🔐 تشفير السجلات الطبية
+            modelBuilder.Entity<MedicalRecord>(entity =>
+            {
+                entity.Property(e => e.ChiefComplaint).HasConversion(converter);
+                entity.Property(e => e.Diagnosis).HasConversion(converter);
+                entity.Property(e => e.ClinicalNotes).HasConversion(converter);
+                entity.Property(e => e.Treatment).HasConversion(converter);
+               // entity.Property(e => e.Radiology).HasConversion(converter);
+                // PrescriptionImagePath مسار مش بنشفره
+            });
+
+            // 🔐 تشفير بيانات المرضى
+            modelBuilder.Entity<Patient>(entity =>
+            {
+               // entity.Property(e => e.FullName).HasConversion(converter);
+               // entity.Property(e => e.Ssn).HasConversion(converter); // SSN حساس
+                entity.Property(e => e.Address).HasConversion(converter);
+              //  entity.Property(e => e.ContactNumber).HasConversion(converter);
+             //   entity.Property(e => e.Email).HasConversion(converter);
+                // الباقي زي ما هو (BloodType, Gender, WeightKg, ...)
+            });
+        }
+
+        // ------------------- كود تيم الويب زي ما هو -------------------
         modelBuilder.Entity<Appointment>(entity =>
         {
             entity.HasKey(e => e.AppointmentId).HasName("PK__Appointm__8ECDFCC2783685B3");
