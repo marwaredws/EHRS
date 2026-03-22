@@ -8,3 +8,5 @@ obj/
 # User-specific files
 *.user
 *.suo
+# Security: Protect sensitive configuration
+EHRS/EHRS.Api/appsettings.json
