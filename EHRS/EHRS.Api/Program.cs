@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
-using System.Threading.RateLimiting; // 👈 أضيفي ده
+using System.Threading.RateLimiting; // 👈 
 using EHRS.Api.Localization;
 using EHRS.Api.Services;
 using EHRS.Core.Abstractions.Queries;
@@ -11,7 +11,7 @@ using EHRS.Infrastructure.Queries.Patients;
 using EHRS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
-using Microsoft.AspNetCore.RateLimiting; // 👈 أضيفي ده
+using Microsoft.AspNetCore.RateLimiting; // 👈 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
