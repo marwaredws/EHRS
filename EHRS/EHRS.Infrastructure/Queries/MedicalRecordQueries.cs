@@ -38,13 +38,10 @@ namespace EHRS.Infrastructure.Queries
             {
                 var s = query.Search.Trim();
 
-                // الحل الآمن: البحث في اسم المريض فقط لأنه نص واضح (Plain Text)
+                
                 q = q.Where(r => r.Patient.FullName.Contains(s));
 
-                /* توضيح للتيم: تم إزالة البحث من Diagnosis و Treatment 
-                   لأنها أعمدة مشفرة بـ AES، والـ SQL لا يدعم الـ Wildcard Search 
-                   (LIKE) على البيانات المشفرة.
-                */
+               
             }
             var totalCount = await q.CountAsync(ct);
 
