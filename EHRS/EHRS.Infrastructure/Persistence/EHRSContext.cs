@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using EHRS.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion; // 👈 أضيفي ده
-using EHRS.Core.Interfaces; // 👈 أضيفي ده
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion; // 👈 
+using EHRS.Core.Interfaces; // 👈 
 
 namespace EHRS.Infrastructure.Persistence;
 
 public partial class EHRSContext : DbContext
 {
-    private readonly IEncryptionService? _encryptionService; // 👈 أضيفي ده (nullable)
+    private readonly IEncryptionService? _encryptionService; // 👈  (nullable)
 
     public EHRSContext()
     {
@@ -83,7 +83,7 @@ public partial class EHRSContext : DbContext
             });
         }
 
-        // ------------------- كود تيم الويب زي ما هو -------------------
+        // --------------------------------------
         modelBuilder.Entity<Appointment>(entity =>
         {
             entity.HasKey(e => e.AppointmentId).HasName("PK__Appointm__8ECDFCC2783685B3");
